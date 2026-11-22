@@ -12,6 +12,9 @@
 importScripts('algorithms.js'); // loads ALGORITHMS into this worker's own scope
 
 // Handles one solve request from the main thread and posts back the result.
+// `event.data` is a brand new copy of whatever main.js passed to
+// postMessage -- this worker is a totally separate world with its own
+// memory, so it was never possible for it to just "see" main.js's objects.
 self.onmessage = (event) => {
   const { id, graph, start, end, algorithm } = event.data;
   const fn = ALGORITHMS[algorithm];

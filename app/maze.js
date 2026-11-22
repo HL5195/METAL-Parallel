@@ -42,6 +42,9 @@ function parseMazeText(text, { wallChar = '#', openChar = '/' } = {}) {
   for (let gr = 0; gr < gridRows; gr++) {
     for (let gc = 0; gc < gridCols; gc++) {
       const ch = rawLines[gr][gc];
+      // ELI5: every character's position is either odd or even on each axis.
+      // Both-odd = the middle of a cell. One-odd-one-even = a wall segment
+      // sitting between two cells. Both-even = a corner point nothing uses.
       const cellRow = gr % 2 === 1;
       const cellCol = gc % 2 === 1;
       if (cellRow && cellCol) {
@@ -56,10 +59,15 @@ function parseMazeText(text, { wallChar = '#', openChar = '/' } = {}) {
         if (ch !== wallChar && ch !== openChar) throw new MazeFormatError(`bad wall char '${ch}'`);
         const open = ch === openChar;
         if (cellRow) {
+          // gr is odd, gc is even -- this character sits between two
+          // horizontally adjacent cells on the same maze row. gc/2-1 converts
+          // that character's grid column back to "which gap between cells".
           const row = (gr - 1) / 2;
           const c = gc / 2 - 1;
           if (c >= 0 && c < cols - 1) hWalls[row][c] = open;
         } else {
+          // gr is even, gc is odd -- same idea, but between two vertically
+          // adjacent cells on the same maze column.
           const row = gr / 2 - 1;
           const col = (gc - 1) / 2;
           if (row >= 0 && row < rows - 1) vWalls[row][col] = open;
@@ -74,6 +82,9 @@ function parseMazeText(text, { wallChar = '#', openChar = '/' } = {}) {
     cols,
     start,
     end,
+    // isOpenH(row, c) = "is there a gap between cell (row, c) and the cell
+    // directly to its right, (row, c+1)?" isOpenV(row, col) = same idea but
+    // for (row, col) and the cell directly below it, (row+1, col).
     isOpenH(row, c) { return c >= 0 && c < cols - 1 && hWalls[row][c]; },
     isOpenV(row, col) { return row >= 0 && row < rows - 1 && vWalls[row][col]; },
     inBounds(row, col) { return row >= 0 && row < rows && col >= 0 && col < cols; },
@@ -101,5 +112,14 @@ function buildAdjacency(maze) {
     }
   }
 
-  return { rows, cols, adjacency, vertexIndexOf: idx, vertexRowCol: (v) => ({ row: Math.floor(v / cols), col: v % cols }) };
+  return {
+    rows,
+    cols,
+    adjacency,
+    vertexIndexOf: idx,
+    // Undoes idx(row, col) = row*cols+col: dividing back out by cols gives
+    // the row, and the leftover remainder (%) gives the col. Same trick as
+    // reading a 1D array as if it were a 2D grid.
+    vertexRowCol: (v) => ({ row: Math.floor(v / cols), col: v % cols }),
+  };
 }

@@ -16,7 +16,10 @@
  * Author: Howard Li
  */
 
-// Walks the parent map backwards from end to start to rebuild the actual path.
+// Every algorithm below builds a `parent` map as it explores: parent.get(v)
+// = "which vertex did we step from to first reach v?" That's enough breadcrumbs
+// to rebuild the whole route afterward -- walk backwards from end to start,
+// one parent at a time, then reverse it. That's all this function does.
 function reconstructPath(parent, start, end) {
   if (!parent.has(end) && end !== start) return []; // end was never reached
   const path = [end];
@@ -86,13 +89,16 @@ function dfs(graph, start, end) {
 // read; a binary heap would speed this up but isn't needed here.
 function dijkstra(graph, start, end) {
   const { adjacency } = graph;
-  const dist = new Map([[start, 0]]);
+  const dist = new Map([[start, 0]]); // best cost found SO FAR to reach each vertex -- may still shrink
   const parent = new Map();
-  const settled = new Set();
+  const settled = new Set(); // vertices whose cheapest cost is now LOCKED IN, guaranteed to never shrink again
   const order = [];
 
   while (true) {
-    // pick the unsettled vertex with the smallest known distance
+    // Find the cheapest not-yet-locked-in vertex by checking every entry in
+    // `dist` one by one (that's the "O(V^2)" the comment above mentions --
+    // a real production version would keep `dist` in a heap so this step
+    // were a quick lookup instead of a full scan every single time).
     let u = null;
     let best = Infinity;
     for (const [v, d] of dist) {
@@ -123,6 +129,11 @@ function dijkstra(graph, start, end) {
 function astar(graph, start, end) {
   const { adjacency, vertexRowCol } = graph;
   const endRC = vertexRowCol(end);
+  // h(v) = "as the crow flies" distance from v to the goal, ignoring walls
+  // entirely. Think of it as a rough compass pointing toward the exit: it's
+  // not the real walking distance, but it's never an overestimate, so using
+  // it to prioritize which cell to check next can only help, never trick
+  // the algorithm into missing the truly shortest route.
   const h = (v) => {
     const rc = vertexRowCol(v);
     return Math.hypot(rc.row - endRC.row, rc.col - endRC.col);

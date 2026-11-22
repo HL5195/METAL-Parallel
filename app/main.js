@@ -20,7 +20,10 @@ let nextPanelId = 1;
 // Stops any run in progress and puts a panel back into its not-run state --
 // shared by maze upload/paste and switching a panel's maze.
 function resetPanelRunState(panel) {
-  panel.runId++; // invalidate any worker reply still in flight from an old run (see runPanel)
+  // runId is like a ticket number: bumping it means "any worker reply still
+  // on its way back from an older run is now out of date, ignore it" (see
+  // the matching check in runPanel below).
+  panel.runId++;
   if (panel.timer) clearInterval(panel.timer); // stop any in-progress animation
   panel.timer = null;
   panel.paused = false;
