@@ -32,6 +32,7 @@ function buildMaze() {
 // Stops any run in progress and puts a panel back into its not-run state --
 // shared by maze regeneration, maze upload, and switching a panel's maze.
 function resetPanelRunState(panel) {
+  panel.runId++; // invalidate any worker reply still in flight from an old run (see runPanel)
   if (panel.timer) clearInterval(panel.timer); // stop any in-progress animation
   panel.timer = null;
   panel.paused = false;
@@ -177,6 +178,7 @@ function createPanel(mazeKey, algorithm) {
     timer: null,
     paused: false,
     animIndex: 0,
+    runId: 0, // bumped on every reset/new run so a stale worker reply can be told apart from the current one
   };
 
   el.querySelector('.mazeSelect').value = mazeKey;
@@ -189,6 +191,7 @@ function createPanel(mazeKey, algorithm) {
   el.querySelector('.runOne').addEventListener('click', () => runPanel(panel));
   el.querySelector('.pauseOne').addEventListener('click', () => togglePause(panel));
   el.querySelector('.remove').addEventListener('click', () => {
+    panel.runId++; // so a worker reply arriving after removal is ignored
     if (panel.timer) clearInterval(panel.timer);
     panels = panels.filter((p) => p !== panel);
     el.remove();
@@ -203,6 +206,7 @@ function createPanel(mazeKey, algorithm) {
 // this is the actual parallel part -- each call runs on its own OS thread.
 function runPanel(panel) {
   if (panel.timer) clearInterval(panel.timer); // cancel any previous run's animation
+  const myRunId = ++panel.runId; // identifies *this* run, so a stale reply below can be detected
   panel.result = null;
   panel.visitedSoFar = new Set();
   panel.currentVertex = null;
@@ -220,9 +224,14 @@ function runPanel(panel) {
   const worker = new Worker('worker.js'); // separate OS thread, own JS engine
   const t0 = performance.now();
   worker.onmessage = (event) => {
+    worker.terminate();
+    // the panel may have been reset, re-run, switched to another maze, or
+    // removed while this worker was still computing -- if so, its result no
+    // longer matches panel.mazeKey's graph, so throw it away instead of
+    // animating a mismatched result into the wrong maze.
+    if (panel.runId !== myRunId) return;
     panel.wallMs = performance.now() - t0; // includes thread spin-up + message copy, not just compute
     panel.result = event.data;
-    worker.terminate();
     panel.pauseBtn.disabled = false;
     startAnimTimer(panel);
   };
