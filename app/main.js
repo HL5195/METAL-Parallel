@@ -251,7 +251,14 @@ function runPanel(panel) {
 function startAnimTimer(panel) {
   if (panel.timer) clearInterval(panel.timer);
   const { order, found, path, elapsedMs } = panel.result;
-  const stepsPerTick = Math.max(1, Math.ceil(order.length / 60)); // keep long runs from crawling
+  // 1 cell per tick whenever possible, so animation length stays directly
+  // proportional to how many cells were visited (an algorithm that explores
+  // more of the maze visibly takes longer to animate, which is the point of
+  // comparing them side by side). Only chunk for runs big enough that 1/tick
+  // would crawl -- 400 comfortably covers every maze size this app allows
+  // (up to 60x60 = 3600 cells) without chunking kicking in for ordinary
+  // runs and silently reordering which algorithm *looks* slowest.
+  const stepsPerTick = Math.max(1, Math.ceil(order.length / 400));
   const delay = Math.max(10, 310 - Number(speedSlider.value) * 28);
 
   panel.timer = setInterval(() => {
