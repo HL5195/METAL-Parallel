@@ -6,14 +6,67 @@
  *
  * Author: Howard Li
  */
-body { font-family: sans-serif; margin: 20px; }
-#toolbar { margin: 12px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+/* Explicit colors throughout -- fixes text that was unreadable when the
+   page picked up the browser/OS default colors instead of our own. */
+body {
+  font-family: sans-serif;
+  margin: 20px;
+  background: #1e1e1e;
+  color: #e8e8e8;
+  line-height: 1.4;
+}
+h1 { font-size: 1.5rem; margin-bottom: 4px; }
+p { color: #bbb; max-width: 60em; }
+label { color: #ccc; }
+a { color: #6fb3ff; }
+
+#toolbar { margin: 14px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#toolbar input, #toolbar select, #toolbar button { font-size: 0.95rem; }
+#toolbar input[type="number"] { width: 4em; }
+#toolbar textarea {
+  font-family: monospace;
+  background: #111;
+  color: #e8e8e8;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+
+button {
+  background: #3a3a3a;
+  color: #e8e8e8;
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: #4a4a4a; }
+button:disabled { color: #888; cursor: default; }
+
+select, input[type="number"], input[type="file"] {
+  background: #2a2a2a;
+  color: #e8e8e8;
+  border: 1px solid #666;
+  border-radius: 3px;
+  padding: 3px;
+}
+
 #panels { display: flex; flex-wrap: wrap; gap: 16px; }
-.panel { border: 1px solid #999; padding: 8px; }
-.panel h3 { margin: 0 0 6px; font-size: 1rem; }
+.panel {
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #272727;
+  padding: 10px;
+}
+.panel h3 { margin: 0 0 6px; font-size: 1.05rem; color: #fff; }
 .panel select { margin-right: 6px; }
-.panel canvas { display: block; background: #222; margin-top: 6px; }
-.panel .metrics { font-size: 0.8rem; margin-top: 4px; white-space: pre; }
+.panel canvas { display: block; background: #222; margin-top: 6px; border: 1px solid #444; }
+.panel .metrics {
+  font-family: monospace;
+  font-size: 0.85rem;
+  margin-top: 6px;
+  white-space: pre;
+  color: #cfe8cf;
+}
 .panel .remove { float: right; }
 .panel .runOne { margin-left: 4px; }
 .panel .pauseOne { margin-left: 4px; }
