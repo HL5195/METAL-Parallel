@@ -307,6 +307,19 @@ document.getElementById('mazeFileInput').addEventListener('change', (e) => {
   e.target.value = ''; // clear so re-selecting the same file still fires 'change'
 });
 
+// Loads whatever maze text is in the paste textarea into the chosen slot,
+// the same way a file upload does -- textarea content is left in place so
+// it can be tweaked and reloaded.
+document.getElementById('loadPasteBtn').addEventListener('click', () => {
+  const slot = document.getElementById('uploadTarget').value;
+  const text = document.getElementById('mazePasteInput').value;
+  try {
+    loadMazeIntoSlot(slot, text);
+  } catch (err) {
+    alert(`Could not load maze into ${slot}: ${err.message}`);
+  }
+});
+
 regenerateMazes();
 createPanel('A', 'bfs');
 createPanel('A', 'dfs');
