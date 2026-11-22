@@ -29,23 +29,41 @@ function buildMaze() {
   return { maze, graph };
 }
 
+// Stops any run in progress and puts a panel back into its not-run state --
+// shared by maze regeneration, maze upload, and switching a panel's maze.
+function resetPanelRunState(panel) {
+  if (panel.timer) clearInterval(panel.timer); // stop any in-progress animation
+  panel.timer = null;
+  panel.paused = false;
+  panel.animIndex = 0;
+  panel.result = null;
+  panel.visitedSoFar = null;
+  panel.currentVertex = null;
+  panel.showPath = false;
+  panel.pauseBtn.disabled = true;
+  panel.pauseBtn.textContent = 'Pause';
+  panel.metricsEl.textContent = 'Not run yet.';
+  drawPanel(panel);
+}
+
 // Rebuilds Maze A and Maze B and resets every panel back to its not-run state.
 function regenerateMazes() {
   mazes.A = buildMaze();
   mazes.B = buildMaze();
+  panels.forEach(resetPanelRunState);
+}
+
+// Parses uploaded/pasted maze text and installs it as Maze A or Maze B,
+// resetting whichever panels are pointed at that slot. Throws
+// MazeFormatError (bad grid) or a plain Error (missing S/E) on bad input --
+// the caller is expected to show that message to the user.
+function loadMazeIntoSlot(slot, text) {
+  const maze = parseMazeText(text);
+  if (!maze.start || !maze.end) throw new Error('maze text must mark exactly one S (start) and one E (end)');
+  const graph = buildAdjacency(maze);
+  mazes[slot] = { maze, graph };
   for (const panel of panels) {
-    if (panel.timer) clearInterval(panel.timer); // stop any in-progress animation
-    panel.timer = null;
-    panel.paused = false;
-    panel.animIndex = 0;
-    panel.result = null;
-    panel.visitedSoFar = null;
-    panel.currentVertex = null;
-    panel.showPath = false;
-    panel.pauseBtn.disabled = true;
-    panel.pauseBtn.textContent = 'Pause';
-    panel.metricsEl.textContent = 'Not run yet.';
-    drawPanel(panel);
+    if (panel.mazeKey === slot) resetPanelRunState(panel);
   }
 }
 
@@ -164,19 +182,8 @@ function createPanel(mazeKey, algorithm) {
   el.querySelector('.mazeSelect').value = mazeKey;
   el.querySelector('.algoSelect').value = algorithm;
   el.querySelector('.mazeSelect').addEventListener('change', (e) => {
-    if (panel.timer) clearInterval(panel.timer);
-    panel.timer = null;
-    panel.paused = false;
-    panel.animIndex = 0;
     panel.mazeKey = e.target.value;
-    panel.result = null;
-    panel.visitedSoFar = null;
-    panel.currentVertex = null;
-    panel.showPath = false;
-    panel.pauseBtn.disabled = true;
-    panel.pauseBtn.textContent = 'Pause';
-    panel.metricsEl.textContent = 'Not run yet.';
-    drawPanel(panel);
+    resetPanelRunState(panel);
   });
   el.querySelector('.algoSelect').addEventListener('change', (e) => { panel.algorithm = e.target.value; });
   el.querySelector('.runOne').addEventListener('click', () => runPanel(panel));
@@ -281,6 +288,24 @@ function togglePause(panel) {
 document.getElementById('regenBtn').addEventListener('click', regenerateMazes);
 document.getElementById('runBtn').addEventListener('click', () => panels.forEach(runPanel));
 document.getElementById('addPanelBtn').addEventListener('click', () => createPanel('A', 'bfs'));
+
+// Reads the chosen .txt file and loads it into whichever slot (A/B) the
+// uploadTarget dropdown is set to.
+document.getElementById('mazeFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const slot = document.getElementById('uploadTarget').value;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      loadMazeIntoSlot(slot, reader.result);
+    } catch (err) {
+      alert(`Could not load maze into ${slot}: ${err.message}`);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // clear so re-selecting the same file still fires 'change'
+});
 
 regenerateMazes();
 createPanel('A', 'bfs');
