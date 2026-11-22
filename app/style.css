@@ -1,0 +1,19 @@
+/*
+ * Description: Minimal styling for the maze visualizer -- toolbar layout,
+ * panel grid, and the dark canvas background the mazes are drawn on.
+ *
+ * Referenced METAL: No -- plain from-scratch styles.
+ *
+ * Author: Howard Li
+ */
+body { font-family: sans-serif; margin: 20px; }
+#toolbar { margin: 12px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#panels { display: flex; flex-wrap: wrap; gap: 16px; }
+.panel { border: 1px solid #999; padding: 8px; }
+.panel h3 { margin: 0 0 6px; font-size: 1rem; }
+.panel select { margin-right: 6px; }
+.panel canvas { display: block; background: #222; margin-top: 6px; }
+.panel .metrics { font-size: 0.8rem; margin-top: 4px; white-space: pre; }
+.panel .remove { float: right; }
+.panel .runOne { margin-left: 4px; }
+.panel .pauseOne { margin-left: 4px; }
