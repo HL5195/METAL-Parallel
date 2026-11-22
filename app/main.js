@@ -19,10 +19,19 @@ let mazes = { A: null, B: null }; // { maze, graph }, shared by every panel poin
 let panels = [];
 let nextPanelId = 1;
 
+// Clamps a size input to [3, 60] -- the HTML min/max on the inputs only
+// affects native validation styling, not what value.value actually returns,
+// so a typed-in 1 or 0 would otherwise reach the generator directly. Below
+// 2x2 the generator's start and end markers can land on the same single
+// cell (end overwrites start), producing a maze with no start at all.
+function clampMazeSize(value) {
+  return Math.min(60, Math.max(3, Number(value) || 3));
+}
+
 // Generates one fresh random maze (at the toolbar's current size) and its graph.
 function buildMaze() {
-  const rows = Number(rowsInput.value);
-  const cols = Number(colsInput.value);
+  const rows = clampMazeSize(rowsInput.value);
+  const cols = clampMazeSize(colsInput.value);
   const text = generateMazeText(rows, cols);
   const maze = parseMazeText(text);
   const graph = buildAdjacency(maze); // cardinal moves only
@@ -218,6 +227,10 @@ function runPanel(panel) {
   panel.metricsEl.textContent = 'Computing...';
 
   const { maze, graph } = mazes[panel.mazeKey];
+  if (!maze.start || !maze.end) {
+    panel.metricsEl.textContent = `Maze ${panel.mazeKey} has no start/end to solve.`;
+    return;
+  }
   const start = graph.vertexIndexOf(maze.start.row, maze.start.col);
   const end = graph.vertexIndexOf(maze.end.row, maze.end.col);
 
