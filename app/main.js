@@ -11,35 +11,14 @@
  */
 
 const panelsEl = document.getElementById('panels');
-const rowsInput = document.getElementById('rowsInput');
-const colsInput = document.getElementById('colsInput');
 const speedSlider = document.getElementById('speedSlider');
 
-let mazes = { A: null, B: null }; // { maze, graph }, shared by every panel pointed at that key
+let mazes = { A: null, B: null }; // { maze, graph } once loaded, else null -- shared by every panel pointed at that key
 let panels = [];
 let nextPanelId = 1;
 
-// Clamps a size input to [3, 60] -- the HTML min/max on the inputs only
-// affects native validation styling, not what value.value actually returns,
-// so a typed-in 1 or 0 would otherwise reach the generator directly. Below
-// 2x2 the generator's start and end markers can land on the same single
-// cell (end overwrites start), producing a maze with no start at all.
-function clampMazeSize(value) {
-  return Math.min(60, Math.max(3, Number(value) || 3));
-}
-
-// Generates one fresh random maze (at the toolbar's current size) and its graph.
-function buildMaze() {
-  const rows = clampMazeSize(rowsInput.value);
-  const cols = clampMazeSize(colsInput.value);
-  const text = generateMazeText(rows, cols);
-  const maze = parseMazeText(text);
-  const graph = buildAdjacency(maze); // cardinal moves only
-  return { maze, graph };
-}
-
 // Stops any run in progress and puts a panel back into its not-run state --
-// shared by maze regeneration, maze upload, and switching a panel's maze.
+// shared by maze upload/paste and switching a panel's maze.
 function resetPanelRunState(panel) {
   panel.runId++; // invalidate any worker reply still in flight from an old run (see runPanel)
   if (panel.timer) clearInterval(panel.timer); // stop any in-progress animation
@@ -54,13 +33,6 @@ function resetPanelRunState(panel) {
   panel.pauseBtn.textContent = 'Pause';
   panel.metricsEl.textContent = 'Not run yet.';
   drawPanel(panel);
-}
-
-// Rebuilds Maze A and Maze B and resets every panel back to its not-run state.
-function regenerateMazes() {
-  mazes.A = buildMaze();
-  mazes.B = buildMaze();
-  panels.forEach(resetPanelRunState);
 }
 
 // Parses uploaded/pasted maze text and installs it as Maze A or Maze B,
@@ -83,11 +55,24 @@ function cellSizeFor(maze) {
 }
 
 // Redraws one panel's canvas: background, visited/current/path cell fills,
-// start/end markers, then the maze's walls on top.
+// start/end markers, then the maze's walls on top. Draws a placeholder
+// instead if nothing has been uploaded/pasted into this panel's slot yet.
 function drawPanel(panel) {
-  const { maze } = mazes[panel.mazeKey];
-  const size = cellSizeFor(maze);
+  const entry = mazes[panel.mazeKey];
   const canvas = panel.canvas;
+  if (!entry) {
+    canvas.width = 320;
+    canvas.height = 60;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#888';
+    ctx.font = '14px sans-serif';
+    ctx.fillText(`No maze loaded into ${panel.mazeKey} -- upload or paste one above`, 8, 34);
+    return;
+  }
+  const { maze } = entry;
+  const size = cellSizeFor(maze);
   canvas.width = maze.cols * size;
   canvas.height = maze.rows * size;
   const ctx = canvas.getContext('2d');
@@ -226,7 +211,12 @@ function runPanel(panel) {
   panel.pauseBtn.textContent = 'Pause';
   panel.metricsEl.textContent = 'Computing...';
 
-  const { maze, graph } = mazes[panel.mazeKey];
+  const entry = mazes[panel.mazeKey];
+  if (!entry) {
+    panel.metricsEl.textContent = `No maze loaded into ${panel.mazeKey} -- upload or paste one above.`;
+    return;
+  }
+  const { maze, graph } = entry;
   if (!maze.start || !maze.end) {
     panel.metricsEl.textContent = `Maze ${panel.mazeKey} has no start/end to solve.`;
     return;
@@ -314,7 +304,6 @@ function togglePause(panel) {
   }
 }
 
-document.getElementById('regenBtn').addEventListener('click', regenerateMazes);
 document.getElementById('runBtn').addEventListener('click', () => panels.forEach(runPanel));
 document.getElementById('addPanelBtn').addEventListener('click', () => createPanel('A', 'bfs'));
 
@@ -349,7 +338,6 @@ document.getElementById('loadPasteBtn').addEventListener('click', () => {
   }
 });
 
-regenerateMazes();
 createPanel('A', 'bfs');
 createPanel('A', 'dfs');
 createPanel('B', 'bfs');

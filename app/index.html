@@ -1,6 +1,6 @@
 <!--
   Description: Page layout for the simple multi-panel maze visualizer --
-  toolbar (maze size, generate, speed, run all) plus a container that
+  toolbar (upload/paste a maze, speed, run all) plus a container that
   main.js fills with per-algorithm panels.
 
   Referenced METAL: No -- plain from-scratch page.
@@ -16,11 +16,9 @@
 </head>
 <body>
   <h1>METAL Parallel Maze Visualizer</h1>
-  <p>Each panel runs its own BFS/DFS/Dijkstra/A* in a separate Web Worker thread, against a plain, from-scratch implementation (no METAL/HDX code). Simple on purpose &mdash; everything else gets added later.</p>
+  <p>Each panel runs its own BFS/DFS/Dijkstra/A* in a separate Web Worker thread, against a plain, from-scratch implementation (no METAL/HDX code). Upload or paste a maze below to get started. Simple on purpose &mdash; everything else gets added later.</p>
 
   <div id="toolbar">
-    <label>Maze size: <input type="number" id="rowsInput" value="15" min="3" max="60"> x <input type="number" id="colsInput" value="15" min="3" max="60"></label>
-    <button id="regenBtn">Generate new mazes</button>
     <label>Speed: <input type="range" id="speedSlider" min="1" max="10" value="6"></label>
     <button id="runBtn">Run All</button>
     <button id="addPanelBtn">+ Add panel</button>
@@ -36,7 +34,6 @@
   <div id="panels"></div>
 
   <script src="maze.js"></script>
-  <script src="generate.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
