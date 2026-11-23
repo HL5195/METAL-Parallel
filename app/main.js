@@ -12,10 +12,18 @@
 
 const panelsEl = document.getElementById('panels');
 const speedSlider = document.getElementById('speedSlider');
+const uploadTargetSelect = document.getElementById('uploadTarget');
 
-let mazes = { A: null, B: null }; // { maze, graph } once loaded, else null -- shared by every panel pointed at that key
+// mazes is an open-ended list, not just two fixed slots -- { [mazeId]: { maze, graph } },
+// so you can upload/paste as many mazes as you want and compare them all at once.
+let mazes = {};
+let nextMazeNumber = 1;
 let panels = [];
 let nextPanelId = 1;
+
+function mazeIds() {
+  return Object.keys(mazes);
+}
 
 // Stops any run in progress and puts a panel back into its not-run state --
 // shared by maze upload/paste and switching a panel's maze.
@@ -38,17 +46,48 @@ function resetPanelRunState(panel) {
   drawPanel(panel);
 }
 
-// Parses uploaded/pasted maze text and installs it as Maze A or Maze B,
-// resetting whichever panels are pointed at that slot. Throws
+// Rebuilds the upload-target dropdown and every panel's maze dropdown so
+// they list exactly the mazes currently loaded, plus a "+ New maze" choice
+// on the upload dropdown. Called any time a maze is added.
+function refreshAllMazeSelects() {
+  const ids = mazeIds();
+
+  const prevTarget = uploadTargetSelect.value;
+  uploadTargetSelect.innerHTML =
+    ids.map((id) => `<option value="${id}">Maze ${id}</option>`).join('') +
+    `<option value="__new__">+ New maze</option>`;
+  uploadTargetSelect.value = ids.includes(prevTarget) ? prevTarget : '__new__';
+
+  for (const panel of panels) {
+    const sel = panel.el.querySelector('.mazeSelect');
+    sel.innerHTML = ids.length
+      ? ids.map((id) => `<option value="${id}">Maze ${id}</option>`).join('')
+      : `<option value="">No mazes yet</option>`;
+    sel.value = panel.mazeKey && ids.includes(panel.mazeKey) ? panel.mazeKey : '';
+  }
+}
+
+// Parses uploaded/pasted maze text and installs it as a maze. If the upload
+// dropdown is pointed at an existing maze, that maze is replaced in place
+// (same id, so panels using it just get the new content); if it's set to
+// "+ New maze" (or nothing exists yet), a brand new maze slot is created
+// instead -- this is what lets you build up a whole list of mazes to
+// compare rather than being limited to a fixed couple of slots. Throws
 // MazeFormatError (bad grid) or a plain Error (missing S/E) on bad input --
 // the caller is expected to show that message to the user.
-function loadMazeIntoSlot(slot, text) {
+function loadMazeFromText(text) {
   const maze = parseMazeText(text);
   if (!maze.start || !maze.end) throw new Error('maze text must mark exactly one S (start) and one E (end)');
   const graph = buildAdjacency(maze);
-  mazes[slot] = { maze, graph };
+
+  const target = uploadTargetSelect.value;
+  const id = target === '__new__' || !mazes[target] ? String(nextMazeNumber++) : target;
+  mazes[id] = { maze, graph };
+  refreshAllMazeSelects();
+  uploadTargetSelect.value = id; // keep targeting this slot so a quick re-upload replaces it again
+
   for (const panel of panels) {
-    if (panel.mazeKey === slot) resetPanelRunState(panel);
+    if (panel.mazeKey === id) resetPanelRunState(panel);
   }
 }
 
@@ -71,7 +110,7 @@ function drawPanel(panel) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#888';
     ctx.font = '14px sans-serif';
-    ctx.fillText(`No maze loaded into ${panel.mazeKey} -- upload or paste one above`, 8, 34);
+    ctx.fillText(`No maze selected -- upload or paste one above`, 8, 34);
     return;
   }
   const { maze } = entry;
@@ -143,7 +182,7 @@ function createPanel(mazeKey, algorithm) {
     <button class="remove">x</button>
     <h3>Panel ${id}</h3>
     <label>Maze:
-      <select class="mazeSelect"><option value="A">A</option><option value="B">B</option></select>
+      <select class="mazeSelect"></select>
     </label>
     <label>Algorithm:
       <select class="algoSelect">
@@ -178,7 +217,6 @@ function createPanel(mazeKey, algorithm) {
     runId: 0, // bumped on every reset/new run so a stale worker reply can be told apart from the current one
   };
 
-  el.querySelector('.mazeSelect').value = mazeKey;
   el.querySelector('.algoSelect').value = algorithm;
   el.querySelector('.mazeSelect').addEventListener('change', (e) => {
     panel.mazeKey = e.target.value;
@@ -195,6 +233,7 @@ function createPanel(mazeKey, algorithm) {
   });
 
   panels.push(panel);
+  refreshAllMazeSelects(); // populates this panel's (and every other panel's) maze dropdown
   drawPanel(panel);
   return panel;
 }
@@ -216,12 +255,12 @@ function runPanel(panel) {
 
   const entry = mazes[panel.mazeKey];
   if (!entry) {
-    panel.metricsEl.textContent = `No maze loaded into ${panel.mazeKey} -- upload or paste one above.`;
+    panel.metricsEl.textContent = `No maze selected -- upload or paste one above.`;
     return;
   }
   const { maze, graph } = entry;
   if (!maze.start || !maze.end) {
-    panel.metricsEl.textContent = `Maze ${panel.mazeKey} has no start/end to solve.`;
+    panel.metricsEl.textContent = `This maze has no start/end to solve.`;
     return;
   }
   const start = graph.vertexIndexOf(maze.start.row, maze.start.col);
@@ -308,40 +347,39 @@ function togglePause(panel) {
 }
 
 document.getElementById('runBtn').addEventListener('click', () => panels.forEach(runPanel));
-document.getElementById('addPanelBtn').addEventListener('click', () => createPanel('A', 'bfs'));
+// A newly added panel defaults to whatever maze was loaded first, if any.
+document.getElementById('addPanelBtn').addEventListener('click', () => createPanel(mazeIds()[0] || null, 'bfs'));
 
-// Reads the chosen .txt file and loads it into whichever slot (A/B) the
-// uploadTarget dropdown is set to.
+// Reads the chosen .txt file and loads it via the upload-target dropdown
+// (an existing maze to replace, or "+ New maze" to add another one).
 document.getElementById('mazeFileInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const slot = document.getElementById('uploadTarget').value;
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      loadMazeIntoSlot(slot, reader.result);
+      loadMazeFromText(reader.result);
     } catch (err) {
-      alert(`Could not load maze into ${slot}: ${err.message}`);
+      alert(`Could not load maze: ${err.message}`);
     }
   };
   reader.readAsText(file);
   e.target.value = ''; // clear so re-selecting the same file still fires 'change'
 });
 
-// Loads whatever maze text is in the paste textarea into the chosen slot,
-// the same way a file upload does -- textarea content is left in place so
-// it can be tweaked and reloaded.
+// Loads whatever maze text is in the paste textarea, the same way a file
+// upload does -- textarea content is left in place so it can be tweaked and
+// reloaded.
 document.getElementById('loadPasteBtn').addEventListener('click', () => {
-  const slot = document.getElementById('uploadTarget').value;
   const text = document.getElementById('mazePasteInput').value;
   try {
-    loadMazeIntoSlot(slot, text);
+    loadMazeFromText(text);
   } catch (err) {
-    alert(`Could not load maze into ${slot}: ${err.message}`);
+    alert(`Could not load maze: ${err.message}`);
   }
 });
 
-createPanel('A', 'bfs');
-createPanel('A', 'dfs');
-createPanel('B', 'bfs');
-createPanel('B', 'dfs');
+createPanel(null, 'bfs');
+createPanel(null, 'dfs');
+createPanel(null, 'dijkstra');
+createPanel(null, 'astar');
