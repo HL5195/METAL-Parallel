@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CLI: node bin/convert.js <maze.txt> [output.tmg] [--wall=#] [--open=/] [--no-diagonal]
+// CLI: node bin/convert.js <maze.txt> [output.tmg] [--wall=#] [--open=/]
 const fs = require('fs');
 const path = require('path');
 const { convertMazeText } = require('../src/convert');
@@ -17,7 +17,7 @@ function main(argv) {
   );
 
   if (positional.length < 1) {
-    console.error('Usage: convert.js <maze.txt> [output.tmg] [--wall=#] [--open=/] [--no-diagonal]');
+    console.error('Usage: convert.js <maze.txt> [output.tmg] [--wall=#] [--open=/]');
     process.exit(2);
   }
 
@@ -28,7 +28,6 @@ function main(argv) {
   const { maze, graph, tmgText } = convertMazeText(text, {
     wallChar: flags.wall || '#',
     openChar: flags.open || '/',
-    allowDiagonal: !flags['no-diagonal'],
   });
 
   console.error(

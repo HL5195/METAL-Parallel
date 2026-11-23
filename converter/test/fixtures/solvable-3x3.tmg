@@ -1,7 +1,7 @@
 TMG 3.0 custom
-9 10
+9 7
 row col
-kind
+
 r0c0 0.0000000 0.0000000 0 0
 r0c1 0.0000000 0.0001000 0 1
 r0c2 0.0000000 0.0002000 0 2
@@ -11,13 +11,10 @@ r1c2 -0.0001000 0.0002000 1 2
 r2c0 -0.0002000 0.0000000 2 0
 r2c1 -0.0002000 0.0001000 2 1
 r2c2 -0.0002000 0.0002000 2 2
-0 1 maze cardinal
-0 3 maze cardinal
-0 4 maze diagonal
-1 2 maze cardinal
-2 4 maze diagonal
-2 5 maze cardinal
-3 4 maze cardinal
-4 6 maze diagonal
-4 7 maze cardinal
-5 8 maze cardinal
+0 1 maze
+0 3 maze
+1 2 maze
+2 5 maze
+3 4 maze
+4 7 maze
+5 8 maze

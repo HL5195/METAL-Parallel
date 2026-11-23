@@ -3,18 +3,16 @@
 // "custom" (not "simple") is used deliberately so that each vertex can
 // carry its original (row, col) maze position as a custom field -- this
 // is the "companion metadata" the Milestone-0 report called for, folded
-// directly into the .tmg rather than a separate file. Each edge carries
-// a "kind" field (cardinal/diagonal) for our own verification tooling;
-// unmodified HDX ignores fields it doesn't know about and just displays
-// them as extra data-table columns.
+// directly into the .tmg rather than a separate file. Unmodified HDX
+// ignores fields it doesn't know about and just displays them as extra
+// data-table columns.
 //
 // Coordinates are placed on a tiny grid at the equator (lat/lon both near
-// 0) specifically so that degenerate equirectangular/haversine distance
-// approximates planar Euclidean distance at this scale, making a diagonal
-// edge compute to very close to sqrt(2) times a cardinal edge's length --
-// see MAZE_FORMAT_SPEC notes / Milestone-0 report section 5. This is a
-// hypothesis to be confirmed against the real HDX/tmlib distance function
-// in Milestone 3, not an assumption baked in silently.
+// 0) so that degenerate equirectangular/haversine distance approximates
+// planar Euclidean distance at this scale -- see MAZE_FORMAT_SPEC notes /
+// Milestone-0 report section 5. This is a hypothesis to be confirmed
+// against the real HDX/tmlib distance function in Milestone 3, not an
+// assumption baked in silently.
 
 const DEFAULT_SPACING_DEGREES = 0.0001; // ~11m at the equator
 
@@ -27,7 +25,7 @@ function emitTmg(graph, { spacing = DEFAULT_SPACING_DEGREES } = {}) {
   lines.push(`TMG 3.0 custom`);
   lines.push(`${graph.vertices.length} ${graph.edges.length}`);
   lines.push(`row col`); // vertex custom fields
-  lines.push(`kind`); // edge custom fields
+  lines.push(``); // edge custom fields -- none (no per-edge data to carry)
 
   for (const v of graph.vertices) {
     const lat = (-v.row * spacing).toFixed(7);
@@ -36,7 +34,7 @@ function emitTmg(graph, { spacing = DEFAULT_SPACING_DEGREES } = {}) {
   }
 
   for (const e of graph.edges) {
-    lines.push(`${e.v1} ${e.v2} maze ${e.kind}`);
+    lines.push(`${e.v1} ${e.v2} maze`);
   }
 
   return lines.join('\n') + '\n';
@@ -45,7 +43,11 @@ function emitTmg(graph, { spacing = DEFAULT_SPACING_DEGREES } = {}) {
 // Minimal, independent TMG reader (does NOT reuse HDX's parseTMGContents)
 // used only to round-trip-validate our own emitted files in tests.
 function readTmg(text) {
-  const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.length > 0 || false);
+  // Only drop the one trailing blank line produced by emitTmg's final '\n'
+  // -- NOT every blank line, since a "custom" file with no edge fields has
+  // a legitimately blank eFields declaration line in the middle of the file.
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
   const header = lines[0].split(' ');
   if (header[0] !== 'TMG') throw new Error('not a TMG file');
   const version = header[1];

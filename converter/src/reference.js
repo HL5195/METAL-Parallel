@@ -5,10 +5,9 @@
 // maze's wall data with its own code, so a shared bug in graph.js can't
 // hide behind a test that uses the same logic to check itself.
 
-const SQRT2 = Math.SQRT2;
-
 // Re-derives the legal moves out of (row,col), independently of graph.js.
-function neighborsOf(maze, row, col, { allowDiagonal = true } = {}) {
+// Only the 4 cardinal directions -- no diagonal movement.
+function neighborsOf(maze, row, col) {
   const out = [];
   const { rows, cols } = maze;
 
@@ -24,35 +23,12 @@ function neighborsOf(maze, row, col, { allowDiagonal = true } = {}) {
   if (open.down) out.push({ row: row + 1, col, weight: 1 });
   if (open.up) out.push({ row: row - 1, col, weight: 1 });
 
-  if (!allowDiagonal) return out;
-
-  // Diagonal rule (must match graph.js's rule exactly, since both are meant
-  // to implement the same Milestone-1 spec -- only the code is independent):
-  // a diagonal move out of the cell being visited is legal only when BOTH of
-  // that cell's own orthogonal walls toward the two shared-corner cells are
-  // open. E.g. for down-right, the shared-corner cells are the right
-  // neighbor and the down neighbor, so both open.right and open.down must
-  // hold -- not any wall measured from the far side of the diagonal.
-  if (open.right && open.down) {
-    out.push({ row: row + 1, col: col + 1, weight: SQRT2 }); // down-right
-  }
-  if (open.left && open.down) {
-    out.push({ row: row + 1, col: col - 1, weight: SQRT2 }); // down-left
-  }
-  if (open.right && open.up) {
-    out.push({ row: row - 1, col: col + 1, weight: SQRT2 }); // up-right
-  }
-  if (open.left && open.up) {
-    out.push({ row: row - 1, col: col - 1, weight: SQRT2 }); // up-left
-  }
-
   return out;
 }
 
-// Dijkstra from start to end (or BFS-equivalent if all weights are 1,
-// but we always run weighted Dijkstra here since diagonals may be present).
-// Returns { reachable, cost, path: [{row,col}, ...] } with path from start to end inclusive.
-function shortestPath(maze, start, end, { allowDiagonal = true } = {}) {
+// Dijkstra from start to end. Returns { reachable, cost, path: [{row,col}, ...] }
+// with path from start to end inclusive.
+function shortestPath(maze, start, end) {
   const { rows, cols } = maze;
   const key = (r, c) => r * cols + c;
   const dist = new Map();
@@ -77,7 +53,7 @@ function shortestPath(maze, start, end, { allowDiagonal = true } = {}) {
     const col = bestKey % cols;
     if (row === end.row && col === end.col) break;
 
-    for (const n of neighborsOf(maze, row, col, { allowDiagonal })) {
+    for (const n of neighborsOf(maze, row, col)) {
       const nk = key(n.row, n.col);
       const nd = bestDist + n.weight;
       if (!dist.has(nk) || nd < dist.get(nk)) {
@@ -104,14 +80,14 @@ function shortestPath(maze, start, end, { allowDiagonal = true } = {}) {
 }
 
 // Finds all cells reachable from `start` (for disconnected-component tests).
-function reachableSet(maze, start, { allowDiagonal = true } = {}) {
+function reachableSet(maze, start) {
   const { cols } = maze;
   const key = (r, c) => r * cols + c;
   const seen = new Set([key(start.row, start.col)]);
   const stack = [start];
   while (stack.length > 0) {
     const { row, col } = stack.pop();
-    for (const n of neighborsOf(maze, row, col, { allowDiagonal })) {
+    for (const n of neighborsOf(maze, row, col)) {
       const nk = key(n.row, n.col);
       if (!seen.has(nk)) {
         seen.add(nk);
